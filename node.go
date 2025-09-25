@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 var errSkip = errors.New("notify: skip")
@@ -166,6 +167,23 @@ Traverse:
 	return nil
 }
 
+func hasChild(nd node, str string) (node, bool) {
+	childNd, ok := nd.Child[str]
+	if ok {
+		return childNd, ok
+	}
+
+	// WARN: I'm not sure if this is valid for all filesystems...
+	// this will allow "Foo" instead of "foo".
+	for key, childNd := range nd.Child {
+		if strings.EqualFold(key, str) {
+			return childNd, true
+		}
+	}
+
+	return node{}, false
+}
+
 func (nd node) WalkPath(name string, fn walkPathFunc) error {
 	i := indexrel(nd.Name, name)
 	if i == -1 {
@@ -180,7 +198,7 @@ func (nd node) WalkPath(name string, fn walkPathFunc) error {
 		default:
 			return err
 		}
-		if nd, ok = nd.Child[name[i:i+j]]; !ok {
+		if nd, ok = hasChild(nd, name[i:i+j]); !ok {
 			return errnotexist(name[:i+j])
 		}
 		i += j + 1

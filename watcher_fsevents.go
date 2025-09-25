@@ -19,6 +19,16 @@ const (
 		FSEventsModified | FSEventsInodeMetaMod)
 )
 
+// hasPrefixCaseInsensitive checks if s has prefix p in a case-insensitive manner.
+// This is needed for filesystems that are case-insensitive but case-preserving.
+func hasPrefixCaseInsensitive(s, p string) bool {
+	if len(s) < len(p) {
+		return false
+	}
+	res := strings.EqualFold(s[:len(p)], p)
+	return res
+}
+
 // FSEvent represents single file event. It is created out of values passed by
 // FSEvents to FSEventStreamCallback function.
 type FSEvent struct {
@@ -34,7 +44,7 @@ func splitflags(set uint32) (e []uint32) {
 			e = append(e, i)
 		}
 	}
-	return
+	return e
 }
 
 // watch represents a filesystem watchpoint. It is a higher level abstraction
@@ -133,7 +143,7 @@ func (w *watch) Dispatch(ev []FSEvent) {
 			// TODO(rjeczalik): missing error handling
 			continue
 		}
-		if !strings.HasPrefix(ev[i].Path, w.path) {
+		if !hasPrefixCaseInsensitive(ev[i].Path, w.path) {
 			continue
 		}
 		n := len(w.path)
